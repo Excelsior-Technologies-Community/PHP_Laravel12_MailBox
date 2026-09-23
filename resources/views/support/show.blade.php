@@ -1,79 +1,368 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<title>Email Detail</title>
 
-<style>
-body{
-    font-family:Arial;
-    background:#f4f6f9;
-}
+    <title>Email Detail</title>
 
-.container{
-    width:70%;
-    margin:40px auto;
-}
+    <style>
 
-.card{
-    background:white;
-    padding:25px;
-    border-radius:8px;
-    box-shadow:0 2px 10px rgba(0,0,0,0.1);
-}
+        * {
+            box-sizing: border-box;
+        }
 
-h2{
-    background:#4f46e5;
-    color:white;
-    padding:15px;
-    border-radius:8px;
-}
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+        }
 
-.label{
-    font-weight:bold;
-    color:#374151;
-}
+        .container {
+            width: 75%;
+            max-width: 1000px;
+            margin: 40px auto;
+        }
 
-.message{
-    margin-top:20px;
-    padding:15px;
-    background:#f9fafb;
-    border-radius:6px;
-}
+        .header {
+            background: #4f46e5;
+            color: white;
+            padding: 18px;
+            border-radius: 9px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-.back{
-    display:inline-block;
-    margin-top:20px;
-    text-decoration:none;
-    background:#4f46e5;
-    color:white;
-    padding:8px 15px;
-    border-radius:5px;
-}
-</style>
+        .header h2 {
+            margin: 0;
+        }
+
+        .header a {
+            background: white;
+            color: #4f46e5;
+            text-decoration: none;
+            padding: 8px 13px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .success {
+            margin-top: 20px;
+            padding: 12px 15px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 7px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            margin-top: 20px;
+            border-radius: 9px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .email-info {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .value {
+            color: #111827;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 7px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .management {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .management h3 {
+            margin-top: 0;
+        }
+
+        .status-badge,
+        .priority-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .read {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .unread {
+            background: #ede9fe;
+            color: #5b21b6;
+        }
+
+        .normal {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .high {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .urgent {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .management-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        select {
+            padding: 9px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+        }
+
+        button {
+            border: none;
+            background: #4f46e5;
+            color: white;
+            padding: 9px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .toggle-btn {
+            background: #374151;
+        }
+
+        .back {
+            display: inline-block;
+            margin-top: 20px;
+            text-decoration: none;
+            background: #4f46e5;
+            color: white;
+            padding: 9px 15px;
+            border-radius: 6px;
+        }
+
+        @media(max-width: 700px) {
+
+            .container {
+                width: 92%;
+            }
+
+            .email-info {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+        }
+
+    </style>
+
 </head>
 
 <body>
 
 <div class="container">
 
-<h2>📧 Email Detail</h2>
+    <div class="header">
 
-<div class="card">
+        <h2>📧 Email Detail</h2>
 
-<p><span class="label">From:</span> {{ $message->from_email }}</p>
-<p><span class="label">Subject:</span> {{ $message->subject }}</p>
+        <a href="{{ route('support.index') }}">
+            📥 Inbox
+        </a>
 
-<hr>
+    </div>
 
-<div class="message">
-{{ $message->message }}
-</div>
+    @if(session('success'))
 
-<a class="back" href="/support">⬅ Back</a>
+        <div class="success">
+            {{ session('success') }}
+        </div>
 
-</div>
+    @endif
+
+    <div class="card">
+
+        <div class="email-info">
+
+            <div class="label">
+                From:
+            </div>
+
+            <div class="value">
+                {{ $message->from_email }}
+            </div>
+
+            <div class="label">
+                Subject:
+            </div>
+
+            <div class="value">
+                {{ $message->subject ?: '(No Subject)' }}
+            </div>
+
+            <div class="label">
+                Received:
+            </div>
+
+            <div class="value">
+                {{ $message->created_at->format('d M Y, h:i A') }}
+            </div>
+
+            <div class="label">
+                Status:
+            </div>
+
+            <div class="value">
+
+                @if($message->is_read)
+
+                    <span class="status-badge read">
+                        ✓ Read
+                    </span>
+
+                @else
+
+                    <span class="status-badge unread">
+                        ● Unread
+                    </span>
+
+                @endif
+
+            </div>
+
+            <div class="label">
+                Priority:
+            </div>
+
+            <div class="value">
+
+                <span class="priority-badge {{ $message->priority }}">
+                    {{ ucfirst($message->priority) }}
+                </span>
+
+            </div>
+
+        </div>
+
+        <hr>
+
+        <div class="message">
+            {{ $message->message }}
+        </div>
+
+        <div class="management">
+
+            <h3>⚙ Email Management</h3>
+
+            <div class="management-row">
+
+                <form
+                    method="POST"
+                    action="{{ route('support.toggle-read', $message->id) }}"
+                >
+
+                    @csrf
+
+                    <button type="submit" class="toggle-btn">
+
+                        @if($message->is_read)
+                            Mark as Unread
+                        @else
+                            Mark as Read
+                        @endif
+
+                    </button>
+
+                </form>
+
+                <form
+                    method="POST"
+                    action="{{ route('support.priority', $message->id) }}"
+                >
+
+                    @csrf
+
+                    <select name="priority">
+
+                        <option
+                            value="normal"
+                            {{ $message->priority === 'normal' ? 'selected' : '' }}
+                        >
+                            Normal Priority
+                        </option>
+
+                        <option
+                            value="high"
+                            {{ $message->priority === 'high' ? 'selected' : '' }}
+                        >
+                            High Priority
+                        </option>
+
+                        <option
+                            value="urgent"
+                            {{ $message->priority === 'urgent' ? 'selected' : '' }}
+                        >
+                            Urgent Priority
+                        </option>
+
+                    </select>
+
+                    <button type="submit">
+                        Update Priority
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        <a
+            class="back"
+            href="{{ route('support.index') }}"
+        >
+            ⬅ Back to Inbox
+        </a>
+
+    </div>
 
 </div>
 
 </body>
+
 </html>

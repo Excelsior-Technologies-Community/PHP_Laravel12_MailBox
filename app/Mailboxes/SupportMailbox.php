@@ -12,6 +12,8 @@ class SupportMailbox
             'from_email' => $email->from(),
             'subject'    => $email->subject(),
             'message'    => $email->text(),
+            'is_read'    => false,
+            'priority'   => 'normal',
         ]);
     }
 }

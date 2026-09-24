@@ -8,146 +8,426 @@ use Illuminate\Http\Request;
 class SupportController extends Controller
 {
     /**
-     * Display mailbox analytics dashboard.
+     * Support dashboard.
      */
     public function dashboard()
     {
-        $totalEmails = SupportMessage::count();
+        $total = SupportMessage::count();
 
-        $unreadEmails = SupportMessage::where('is_read', false)->count();
+        $unread = SupportMessage::where(
+            'is_read',
+            false
+        )->count();
 
-        $readEmails = SupportMessage::where('is_read', true)->count();
+        $read = SupportMessage::where(
+            'is_read',
+            true
+        )->count();
 
-        $todayEmails = SupportMessage::whereDate(
+        $starred = SupportMessage::where(
+            'is_starred',
+            true
+        )->count();
+
+        $urgent = SupportMessage::where(
+            'priority',
+            'urgent'
+        )->count();
+
+        $high = SupportMessage::where(
+            'priority',
+            'high'
+        )->count();
+
+        $normal = SupportMessage::where(
+            'priority',
+            'normal'
+        )->count();
+
+        $today = SupportMessage::whereDate(
             'created_at',
             today()
         )->count();
 
-        $uniqueSenders = SupportMessage::distinct('from_email')->count('from_email');
+        $uniqueSenders = SupportMessage::distinct(
+            'from_email'
+        )->count('from_email');
 
-        $urgentEmails = SupportMessage::where('priority', 'urgent')->count();
-
-        $highPriorityEmails = SupportMessage::where('priority', 'high')->count();
-
-        $normalPriorityEmails = SupportMessage::where('priority', 'normal')->count();
-
-        $recentEmails = SupportMessage::latest()
+        $recentMessages = SupportMessage::latest()
             ->take(5)
             ->get();
 
-        $topSenders = SupportMessage::selectRaw(
-                'from_email, COUNT(*) as total'
+        $topSenders = SupportMessage::select(
+                'from_email'
             )
+            ->selectRaw('COUNT(*) as total')
             ->groupBy('from_email')
             ->orderByDesc('total')
             ->take(5)
             ->get();
 
-        return view('support.dashboard', compact(
-            'totalEmails',
-            'unreadEmails',
-            'readEmails',
-            'todayEmails',
-            'uniqueSenders',
-            'urgentEmails',
-            'highPriorityEmails',
-            'normalPriorityEmails',
-            'recentEmails',
-            'topSenders'
-        ));
+        $trashCount = SupportMessage::onlyTrashed()->count();
+
+        return view(
+            'support.dashboard',
+            compact(
+                'total',
+                'unread',
+                'read',
+                'starred',
+                'urgent',
+                'high',
+                'normal',
+                'today',
+                'uniqueSenders',
+                'recentMessages',
+                'topSenders',
+                'trashCount'
+            )
+        );
     }
 
     /**
-     * Display inbox with search, sender filtering and pagination.
+     * Support inbox.
      */
     public function index(Request $request)
     {
-        $search = $request->input('search');
-        $sender = $request->input('sender');
-        $priority = $request->input('priority');
-        $status = $request->input('status');
+        /*
+        |--------------------------------------------------------------------------
+        | Filters
+        |--------------------------------------------------------------------------
+        */
+
+        $search = $request->input('search', '');
+
+        $sender = $request->input('sender', '');
+
+        $priority = $request->input('priority', '');
+
+        $status = $request->input('status', '');
+
+        $starred = $request->boolean('starred');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date Filters
+        |--------------------------------------------------------------------------
+        */
+
+        $dateFrom = $request->input('date_from');
+
+        $dateTo = $request->input('date_to');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sorting
+        |--------------------------------------------------------------------------
+        */
+
+        $allowedSorts = [
+            'created_at',
+            'from_email',
+            'subject',
+            'priority',
+            'is_read',
+            'is_starred',
+        ];
+
+        $sort = $request->input(
+            'sort',
+            'created_at'
+        );
+
+        if (!in_array(
+            $sort,
+            $allowedSorts,
+            true
+        )) {
+            $sort = 'created_at';
+        }
+
+        $direction = strtolower(
+            $request->input(
+                'direction',
+                'desc'
+            )
+        );
+
+        if (!in_array(
+            $direction,
+            ['asc', 'desc'],
+            true
+        )) {
+            $direction = 'desc';
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Emails Per Page
+        |--------------------------------------------------------------------------
+        */
+
+        $allowedPerPage = [
+            5,
+            10,
+            25,
+            50,
+        ];
+
+        $perPage = (int) $request->input(
+            'per_page',
+            5
+        );
+
+        if (!in_array(
+            $perPage,
+            $allowedPerPage,
+            true
+        )) {
+            $perPage = 5;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Main Query
+        |--------------------------------------------------------------------------
+        */
 
         $query = SupportMessage::query();
 
         /*
-         * Search by sender, subject or message.
-         */
-        if ($search) {
+        |--------------------------------------------------------------------------
+        | Search
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('from_email', 'like', '%' . $search . '%')
-                    ->orWhere('subject', 'like', '%' . $search . '%')
-                    ->orWhere('message', 'like', '%' . $search . '%');
+                $q->where(
+                    'from_email',
+                    'like',
+                    "%{$search}%"
+                )
+                ->orWhere(
+                    'subject',
+                    'like',
+                    "%{$search}%"
+                )
+                ->orWhere(
+                    'message',
+                    'like',
+                    "%{$search}%"
+                );
             });
         }
 
         /*
-         * Filter by sender.
-         */
-        if ($sender) {
-            $query->where('from_email', $sender);
+        |--------------------------------------------------------------------------
+        | Sender
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('sender')) {
+            $query->where(
+                'from_email',
+                $sender
+            );
         }
 
         /*
-         * Filter by priority.
-         */
-        if ($priority && in_array($priority, ['normal', 'high', 'urgent'])) {
-            $query->where('priority', $priority);
+        |--------------------------------------------------------------------------
+        | Priority
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('priority')) {
+            $query->where(
+                'priority',
+                $priority
+            );
         }
 
         /*
-         * Filter by read/unread status.
-         */
+        |--------------------------------------------------------------------------
+        | Read / Unread
+        |--------------------------------------------------------------------------
+        */
+
         if ($status === 'read') {
-            $query->where('is_read', true);
+            $query->where(
+                'is_read',
+                true
+            );
+        } elseif ($status === 'unread') {
+            $query->where(
+                'is_read',
+                false
+            );
         }
-
-        if ($status === 'unread') {
-            $query->where('is_read', false);
-        }
-
-        $messages = $query
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
 
         /*
-         * Get unique senders for the filter dropdown.
-         */
+        |--------------------------------------------------------------------------
+        | Starred
+        |--------------------------------------------------------------------------
+        */
+
+        if ($starred) {
+            $query->where(
+                'is_starred',
+                true
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date From
+        |--------------------------------------------------------------------------
+        |
+        | IMPORTANT:
+        | filled() prevents whereDate() from receiving null.
+        |
+        */
+
+        if ($request->filled('date_from')) {
+            $query->whereDate(
+                'created_at',
+                '>=',
+                $dateFrom
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date To
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('date_to')) {
+            $query->whereDate(
+                'created_at',
+                '<=',
+                $dateTo
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sorting
+        |--------------------------------------------------------------------------
+        */
+
+        $query->orderBy(
+            $sort,
+            $direction
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Summary
+        |--------------------------------------------------------------------------
+        */
+
+        $totalInbox = SupportMessage::count();
+
+        $unreadCount = SupportMessage::where(
+            'is_read',
+            false
+        )->count();
+
+        $starredCount = SupportMessage::where(
+            'is_starred',
+            true
+        )->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Trash
+        |--------------------------------------------------------------------------
+        */
+
+        $trashCount = SupportMessage::onlyTrashed()->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Senders
+        |--------------------------------------------------------------------------
+        */
+
         $senders = SupportMessage::query()
             ->select('from_email')
             ->distinct()
-            ->orderBy('from_email')
+            ->orderBy(
+                'from_email',
+                'asc'
+            )
             ->pluck('from_email');
 
-        return view('support.index', compact(
-            'messages',
-            'senders',
-            'search',
-            'sender',
-            'priority',
-            'status'
-        ));
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
+
+        $messages = $query
+            ->paginate($perPage)
+            ->withQueryString();
+
+        /*
+        |--------------------------------------------------------------------------
+        | View
+        |--------------------------------------------------------------------------
+        */
+
+        return view(
+            'support.index',
+            compact(
+                'messages',
+                'senders',
+
+                // Summary
+                'totalInbox',
+                'unreadCount',
+                'starredCount',
+                'trashCount',
+
+                // Filters
+                'search',
+                'sender',
+                'priority',
+                'status',
+                'starred',
+                'dateFrom',
+                'dateTo',
+
+                // Sorting
+                'sort',
+                'direction',
+
+                // Pagination
+                'perPage'
+            )
+        );
     }
 
     /**
-     * Show single email message details.
+     * Show email.
      */
     public function show($id)
     {
         $message = SupportMessage::findOrFail($id);
 
-        /*
-         * Opening an unread email automatically marks it as read.
-         */
         if (!$message->is_read) {
             $message->markAsRead();
         }
 
-        return view('support.show', compact('message'));
+        return view(
+            'support.show',
+            compact('message')
+        );
     }
 
     /**
-     * Toggle email read/unread status.
+     * Toggle read/unread.
      */
     public function toggleRead($id)
     {
@@ -156,29 +436,35 @@ class SupportController extends Controller
         if ($message->is_read) {
             $message->markAsUnread();
 
-            $status = 'Email marked as unread.';
-        } else {
-            $message->markAsRead();
-
-            $status = 'Email marked as read.';
+            return back()->with(
+                'success',
+                'Email marked as unread.'
+            );
         }
 
-        return back()->with('success', $status);
+        $message->markAsRead();
+
+        return back()->with(
+            'success',
+            'Email marked as read.'
+        );
     }
 
     /**
-     * Update email priority.
+     * Update priority.
      */
-    public function updatePriority(Request $request, $id)
-    {
-        $message = SupportMessage::findOrFail($id);
-
+    public function updatePriority(
+        Request $request,
+        $id
+    ) {
         $validated = $request->validate([
             'priority' => [
                 'required',
                 'in:normal,high,urgent',
             ],
         ]);
+
+        $message = SupportMessage::findOrFail($id);
 
         $message->update([
             'priority' => $validated['priority'],
@@ -187,6 +473,241 @@ class SupportController extends Controller
         return back()->with(
             'success',
             'Email priority updated successfully.'
+        );
+    }
+
+    /**
+     * Toggle star/unstar.
+     */
+    public function toggleStar($id)
+    {
+        $message = SupportMessage::findOrFail($id);
+
+        $message->update([
+            'is_starred' => !$message->is_starred,
+        ]);
+
+        return back()->with(
+            'success',
+            $message->is_starred
+                ? 'Email starred successfully.'
+                : 'Email unstarred successfully.'
+        );
+    }
+
+    /**
+     * Soft delete email.
+     */
+    public function destroy($id)
+    {
+        $message = SupportMessage::findOrFail($id);
+
+        $message->delete();
+
+        return back()->with(
+            'success',
+            'Email moved to Trash.'
+        );
+    }
+
+    /**
+     * Bulk soft delete.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $validated = $request->validate([
+            'selected_ids' => [
+                'required',
+                'array',
+            ],
+
+            'selected_ids.*' => [
+                'integer',
+                'exists:support_messages,id',
+            ],
+        ]);
+
+        $count = SupportMessage::whereIn(
+            'id',
+            $validated['selected_ids']
+        )->delete();
+
+        return back()->with(
+            'success',
+            $count . ' email(s) moved to Trash.'
+        );
+    }
+
+    /**
+     * Trash.
+     */
+    public function trash(Request $request)
+    {
+        $search = $request->input(
+            'search',
+            ''
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Trash Sorting
+        |--------------------------------------------------------------------------
+        */
+
+        $allowedSorts = [
+            'created_at',
+            'from_email',
+            'subject',
+            'priority',
+        ];
+
+        $sort = $request->input(
+            'sort',
+            'created_at'
+        );
+
+        if (!in_array(
+            $sort,
+            $allowedSorts,
+            true
+        )) {
+            $sort = 'created_at';
+        }
+
+        $direction = strtolower(
+            $request->input(
+                'direction',
+                'desc'
+            )
+        );
+
+        if (!in_array(
+            $direction,
+            ['asc', 'desc'],
+            true
+        )) {
+            $direction = 'desc';
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Trash Per Page
+        |--------------------------------------------------------------------------
+        */
+
+        $allowedPerPage = [
+            5,
+            10,
+            25,
+            50,
+        ];
+
+        $perPage = (int) $request->input(
+            'per_page',
+            10
+        );
+
+        if (!in_array(
+            $perPage,
+            $allowedPerPage,
+            true
+        )) {
+            $perPage = 10;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Trash Query
+        |--------------------------------------------------------------------------
+        */
+
+        $query = SupportMessage::onlyTrashed();
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where(
+                    'from_email',
+                    'like',
+                    "%{$search}%"
+                )
+                ->orWhere(
+                    'subject',
+                    'like',
+                    "%{$search}%"
+                )
+                ->orWhere(
+                    'message',
+                    'like',
+                    "%{$search}%"
+                );
+            });
+        }
+
+        $query->orderBy(
+            $sort,
+            $direction
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
+
+        $messages = $query
+            ->paginate($perPage)
+            ->withQueryString();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Trash Count
+        |--------------------------------------------------------------------------
+        */
+
+        $trashCount = SupportMessage::onlyTrashed()->count();
+
+        return view(
+            'support.trash',
+            compact(
+                'messages',
+                'search',
+                'sort',
+                'direction',
+                'perPage',
+                'trashCount'
+            )
+        );
+    }
+
+    /**
+     * Restore email.
+     */
+    public function restore($id)
+    {
+        $message = SupportMessage::onlyTrashed()
+            ->findOrFail($id);
+
+        $message->restore();
+
+        return back()->with(
+            'success',
+            'Email restored successfully.'
+        );
+    }
+
+    /**
+     * Permanently delete email.
+     */
+    public function forceDelete($id)
+    {
+        $message = SupportMessage::onlyTrashed()
+            ->findOrFail($id);
+
+        $message->forceDelete();
+
+        return back()->with(
+            'success',
+            'Email permanently deleted.'
         );
     }
 }

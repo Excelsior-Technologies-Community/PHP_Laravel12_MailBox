@@ -24,8 +24,35 @@ Route::post('/mail-test', [MailController::class, 'send'])
 |--------------------------------------------------------------------------
 */
 
-Route::get('/support/dashboard', [SupportController::class, 'dashboard'])
-    ->name('support.dashboard');
+Route::get(
+    '/support/dashboard',
+    [SupportController::class, 'dashboard']
+)->name('support.dashboard');
+
+/*
+|--------------------------------------------------------------------------
+| Trash
+|--------------------------------------------------------------------------
+|
+| Keep this route BEFORE /support/{id}
+|
+*/
+
+Route::get(
+    '/support/trash',
+    [SupportController::class, 'trash']
+)->name('support.trash');
+
+/*
+|--------------------------------------------------------------------------
+| Bulk Email Management
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/support/bulk-delete',
+    [SupportController::class, 'bulkDelete']
+)->name('support.bulk-delete');
 
 /*
 |--------------------------------------------------------------------------
@@ -33,11 +60,10 @@ Route::get('/support/dashboard', [SupportController::class, 'dashboard'])
 |--------------------------------------------------------------------------
 */
 
-Route::get('/support', [SupportController::class, 'index'])
-    ->name('support.index');
-
-Route::get('/support/{id}', [SupportController::class, 'show'])
-    ->name('support.show');
+Route::get(
+    '/support',
+    [SupportController::class, 'index']
+)->name('support.index');
 
 /*
 |--------------------------------------------------------------------------
@@ -45,8 +71,49 @@ Route::get('/support/{id}', [SupportController::class, 'show'])
 |--------------------------------------------------------------------------
 */
 
-Route::post('/support/{id}/toggle-read', [SupportController::class, 'toggleRead'])
-    ->name('support.toggle-read');
+Route::post(
+    '/support/{id}/toggle-read',
+    [SupportController::class, 'toggleRead']
+)->name('support.toggle-read');
 
-Route::post('/support/{id}/priority', [SupportController::class, 'updatePriority'])
-    ->name('support.priority');
+Route::post(
+    '/support/{id}/toggle-star',
+    [SupportController::class, 'toggleStar']
+)->name('support.toggle-star');
+
+Route::post(
+    '/support/{id}/priority',
+    [SupportController::class, 'updatePriority']
+)->name('support.priority');
+
+Route::delete(
+    '/support/{id}',
+    [SupportController::class, 'destroy']
+)->name('support.destroy');
+
+/*
+|--------------------------------------------------------------------------
+| Trash Management
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/support/trash/{id}/restore',
+    [SupportController::class, 'restore']
+)->name('support.restore');
+
+Route::delete(
+    '/support/trash/{id}/force-delete',
+    [SupportController::class, 'forceDelete']
+)->name('support.force-delete');
+
+/*
+|--------------------------------------------------------------------------
+| Email Detail
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/support/{id}',
+    [SupportController::class, 'show']
+)->name('support.show');

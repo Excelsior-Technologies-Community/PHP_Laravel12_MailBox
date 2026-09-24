@@ -98,14 +98,20 @@
             margin-top: 0;
         }
 
-        .status-badge,
-        .priority-badge {
+        .management-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .badge {
             display: inline-block;
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 13px;
             font-weight: bold;
-            margin-right: 5px;
         }
 
         .read {
@@ -116,6 +122,11 @@
         .unread {
             background: #ede9fe;
             color: #5b21b6;
+        }
+
+        .starred {
+            background: #fef3c7;
+            color: #92400e;
         }
 
         .normal {
@@ -133,14 +144,6 @@
             color: #991b1b;
         }
 
-        .management-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-
         select {
             padding: 9px;
             border: 1px solid #d1d5db;
@@ -149,7 +152,6 @@
 
         button {
             border: none;
-            background: #4f46e5;
             color: white;
             padding: 9px 14px;
             border-radius: 6px;
@@ -158,6 +160,14 @@
 
         .toggle-btn {
             background: #374151;
+        }
+
+        .star-btn {
+            background: #f59e0b;
+        }
+
+        .delete-btn {
+            background: #dc2626;
         }
 
         .back {
@@ -199,7 +209,9 @@
 
     <div class="header">
 
-        <h2>📧 Email Detail</h2>
+        <h2>
+            📧 Email Detail
+        </h2>
 
         <a href="{{ route('support.index') }}">
             📥 Inbox
@@ -240,7 +252,9 @@
             </div>
 
             <div class="value">
-                {{ $message->created_at->format('d M Y, h:i A') }}
+                {{ $message->created_at->format(
+                    'd M Y, h:i A'
+                ) }}
             </div>
 
             <div class="label">
@@ -251,14 +265,36 @@
 
                 @if($message->is_read)
 
-                    <span class="status-badge read">
+                    <span class="badge read">
                         ✓ Read
                     </span>
 
                 @else
 
-                    <span class="status-badge unread">
+                    <span class="badge unread">
                         ● Unread
+                    </span>
+
+                @endif
+
+            </div>
+
+            <div class="label">
+                Star:
+            </div>
+
+            <div class="value">
+
+                @if($message->is_starred)
+
+                    <span class="badge starred">
+                        ⭐ Starred
+                    </span>
+
+                @else
+
+                    <span class="badge">
+                        ☆ Not Starred
                     </span>
 
                 @endif
@@ -271,7 +307,9 @@
 
             <div class="value">
 
-                <span class="priority-badge {{ $message->priority }}">
+                <span
+                    class="badge {{ $message->priority }}"
+                >
                     {{ ucfirst($message->priority) }}
                 </span>
 
@@ -287,18 +325,51 @@
 
         <div class="management">
 
-            <h3>⚙ Email Management</h3>
+            <h3>
+                ⚙ Email Management
+            </h3>
 
             <div class="management-row">
 
                 <form
                     method="POST"
-                    action="{{ route('support.toggle-read', $message->id) }}"
+                    action="{{ route(
+                        'support.toggle-star',
+                        $message->id
+                    ) }}"
                 >
 
                     @csrf
 
-                    <button type="submit" class="toggle-btn">
+                    <button
+                        type="submit"
+                        class="star-btn"
+                    >
+
+                        @if($message->is_starred)
+                            ☆ Remove Star
+                        @else
+                            ⭐ Star Email
+                        @endif
+
+                    </button>
+
+                </form>
+
+                <form
+                    method="POST"
+                    action="{{ route(
+                        'support.toggle-read',
+                        $message->id
+                    ) }}"
+                >
+
+                    @csrf
+
+                    <button
+                        type="submit"
+                        class="toggle-btn"
+                    >
 
                         @if($message->is_read)
                             Mark as Unread
@@ -312,7 +383,10 @@
 
                 <form
                     method="POST"
-                    action="{{ route('support.priority', $message->id) }}"
+                    action="{{ route(
+                        'support.priority',
+                        $message->id
+                    ) }}"
                 >
 
                     @csrf
@@ -321,21 +395,33 @@
 
                         <option
                             value="normal"
-                            {{ $message->priority === 'normal' ? 'selected' : '' }}
+                            {{
+                                $message->priority === 'normal'
+                                ? 'selected'
+                                : ''
+                            }}
                         >
                             Normal Priority
                         </option>
 
                         <option
                             value="high"
-                            {{ $message->priority === 'high' ? 'selected' : '' }}
+                            {{
+                                $message->priority === 'high'
+                                ? 'selected'
+                                : ''
+                            }}
                         >
                             High Priority
                         </option>
 
                         <option
                             value="urgent"
-                            {{ $message->priority === 'urgent' ? 'selected' : '' }}
+                            {{
+                                $message->priority === 'urgent'
+                                ? 'selected'
+                                : ''
+                            }}
                         >
                             Urgent Priority
                         </option>
@@ -344,6 +430,31 @@
 
                     <button type="submit">
                         Update Priority
+                    </button>
+
+                </form>
+
+                <form
+                    method="POST"
+                    action="{{ route(
+                        'support.destroy',
+                        $message->id
+                    ) }}"
+                    onsubmit="
+                        return confirm(
+                            'Move this email to Trash?'
+                        );
+                    "
+                >
+
+                    @csrf
+                    @method('DELETE')
+
+                    <button
+                        type="submit"
+                        class="delete-btn"
+                    >
+                        🗑️ Move to Trash
                     </button>
 
                 </form>

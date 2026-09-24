@@ -10,10 +10,11 @@ class SupportMailbox
     {
         SupportMessage::create([
             'from_email' => $email->from(),
-            'subject'    => $email->subject(),
-            'message'    => $email->text(),
-            'is_read'    => false,
-            'priority'   => 'normal',
+            'subject' => $email->subject(),
+            'message' => $email->text(),
+            'is_read' => false,
+            'is_starred' => false,
+            'priority' => 'normal',
         ]);
     }
 }

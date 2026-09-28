@@ -67,7 +67,7 @@ Route::get(
 
 /*
 |--------------------------------------------------------------------------
-| Email Management
+| Email Management & Thread Reply
 |--------------------------------------------------------------------------
 */
 
@@ -85,6 +85,16 @@ Route::post(
     '/support/{id}/priority',
     [SupportController::class, 'updatePriority']
 )->name('support.priority');
+
+Route::post(
+    '/support/{id}/reply',
+    [SupportController::class, 'reply']
+)->name('support.reply');
+
+Route::post(
+    '/support/{id}/reminder',
+    [SupportController::class, 'setReminder']
+)->name('support.reminder');
 
 Route::delete(
     '/support/{id}',

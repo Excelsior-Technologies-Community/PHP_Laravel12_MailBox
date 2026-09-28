@@ -68,6 +68,10 @@ class SupportController extends Controller
 
         $trashCount = SupportMessage::onlyTrashed()->count();
 
+        $scheduledCount = SupportMessage::where('is_scheduled', true)->count();
+        $remindersCount = SupportMessage::whereNotNull('reminder_at')->count();
+        $repliedCount = SupportMessage::where('is_sent_reply', true)->count();
+
         return view(
             'support.dashboard',
             compact(
@@ -82,7 +86,10 @@ class SupportController extends Controller
                 'uniqueSenders',
                 'recentMessages',
                 'topSenders',
-                'trashCount'
+                'trashCount',
+                'scheduledCount',
+                'remindersCount',
+                'repliedCount'
             )
         );
     }
@@ -420,9 +427,80 @@ class SupportController extends Controller
             $message->markAsRead();
         }
 
+        $threadMessages = $message->getThreadMessages();
+
         return view(
             'support.show',
-            compact('message')
+            compact('message', 'threadMessages')
+        );
+    }
+
+    /**
+     * Send or Schedule Direct Reply to Email Thread.
+     */
+    public function reply(Request $request, $id)
+    {
+        $request->validate([
+            'reply_message' => 'required|string',
+            'attachment' => 'nullable|file|max:5120',
+            'scheduled_at' => 'nullable|date',
+        ]);
+
+        $parent = SupportMessage::findOrFail($id);
+        $rootId = $parent->thread_id ?? $parent->id;
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('attachments', 'public');
+        }
+
+        $isScheduled = $request->filled('scheduled_at') && strtotime($request->scheduled_at) > time();
+
+        $reply = SupportMessage::create([
+            'parent_id' => $parent->id,
+            'thread_id' => $rootId,
+            'from_email' => 'support@company.com',
+            'to_email' => $parent->from_email,
+            'subject' => str_starts_with($parent->subject, 'Re:') ? $parent->subject : 'Re: ' . $parent->subject,
+            'message' => $request->reply_message,
+            'attachment' => $attachmentPath,
+            'is_read' => true,
+            'is_sent_reply' => true,
+            'priority' => $parent->priority ?? 'normal',
+            'is_scheduled' => $isScheduled,
+            'scheduled_at' => $isScheduled ? $request->scheduled_at : null,
+            'status' => $isScheduled ? 'scheduled' : 'open',
+        ]);
+
+        $parent->update(['status' => $isScheduled ? 'scheduled' : 'open']);
+
+        $statusMsg = $isScheduled 
+            ? 'Reply successfully scheduled for ' . date('d M Y, h:i A', strtotime($request->scheduled_at)) . '.'
+            : 'Direct reply sent to ' . $parent->from_email . ' successfully.';
+
+        return back()->with('success', $statusMsg);
+    }
+
+    /**
+     * Set Follow-up Reminder.
+     */
+    public function setReminder(Request $request, $id)
+    {
+        $request->validate([
+            'reminder_at' => 'required|date',
+            'reminder_note' => 'nullable|string|max:500',
+        ]);
+
+        $message = SupportMessage::findOrFail($id);
+
+        $message->update([
+            'reminder_at' => $request->reminder_at,
+            'reminder_note' => $request->reminder_note,
+        ]);
+
+        return back()->with(
+            'success',
+            'Follow-up reminder set for ' . date('d M Y, h:i A', strtotime($request->reminder_at)) . '.'
         );
     }
 

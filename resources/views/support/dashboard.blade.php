@@ -449,11 +449,50 @@
             <div class="stat-title">🗑️ Trash</div>
 
             <div class="stat-number">
-                {{ $trashed ?? 0 }}
+                {{ $trashCount ?? $trashed ?? 0 }}
             </div>
 
-            <a href="{{ url('/trash') }}" class="stat-link">
+            <a href="{{ url('/support/trash') }}" class="stat-link">
                 Manage Trash →
+            </a>
+        </div>
+
+
+        <div class="card stat-card yellow">
+            <div class="stat-title">⏰ Scheduled (Send Later)</div>
+
+            <div class="stat-number">
+                {{ $scheduledCount ?? 0 }}
+            </div>
+
+            <a href="{{ url('/support') }}" class="stat-link">
+                View Scheduled →
+            </a>
+        </div>
+
+
+        <div class="card stat-card blue">
+            <div class="stat-title">🔔 Follow-up Reminders</div>
+
+            <div class="stat-number">
+                {{ $remindersCount ?? 0 }}
+            </div>
+
+            <a href="{{ url('/support') }}" class="stat-link">
+                View Reminders →
+            </a>
+        </div>
+
+
+        <div class="card stat-card green">
+            <div class="stat-title">📤 Sent Staff Replies</div>
+
+            <div class="stat-number">
+                {{ $repliedCount ?? 0 }}
+            </div>
+
+            <a href="{{ url('/support') }}" class="stat-link">
+                View Replies →
             </a>
         </div>
 
